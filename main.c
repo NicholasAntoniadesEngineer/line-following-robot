@@ -1,25 +1,23 @@
-//==========================================================================*
-//	INCLUDES
-//==========================================================================*
+/******************************************************************************
+ * @file    main.c
+ * @brief   Main program for STM32 line-following car
+ * @version 1.0
+ ******************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
 #include "stm32f0xx.h"
 #include "lcd_stm32f0.h"
 #include <stdint.h>
 
-//==========================================================================*
-//	MACROS
-//==========================================================================*
+/* Macros --------------------------------------------------------------------*/
 #define GPIO_AFRH_AFR10_AF2 ((uint32_t)0x00000200)
 #define GPIO_AFRH_AFR11_AF2 ((uint32_t)0x00002000)
 #define GPIO_AF2 ((uint32_t)0x00000002)
 
-//==========================================================================*
-//	GLOBAL CONSTANTS
-//==========================================================================*
+/* Global Constants ----------------------------------------------------------*/
 uint16_t centi_sec = 0;
 
-//==========================================================================*
-//	FUNCTION PROTOTYPES
-//==========================================================================*
+/* Function Prototypes -------------------------------------------------------*/
 void init_Ports(void);
 void init_ADC(void);
 void init_PWM(void);
@@ -36,10 +34,11 @@ void handle_drive(void);
 void handle_softstart(void);
 void handle_reverse(void);
 
-//==========================================================================*
-//	FUNCTIONS
-//==========================================================================*
+/* Functions -----------------------------------------------------------------*/
 
+/**
+ * @brief  Initialize GPIO ports
+ */
 void init_Ports(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOAEN;
     GPIOB->MODER |= (GPIO_MODER_MODER0_0 | GPIO_MODER_MODER1_0 | GPIO_MODER_MODER2_0 |
@@ -49,6 +48,9 @@ void init_Ports(void) {
     GPIOA->PUPDR |= (GPIO_PUPDR_PUPDR0_0 | GPIO_PUPDR_PUPDR1_0 | GPIO_PUPDR_PUPDR2_0 | GPIO_PUPDR_PUPDR3_0);
 }
 
+/**
+ * @brief  Initialize ADC
+ */
 void init_ADC(void) {
     RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
     ADC1->CFGR1 |= 0x10;
@@ -57,6 +59,9 @@ void init_ADC(void) {
     while (!(ADC1->ISR & 0x01));
 }
 
+/**
+ * @brief  Initialize PWM
+ */
 void init_PWM(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
@@ -71,6 +76,12 @@ void init_PWM(void) {
     TIM2->CR1 |= TIM_CR1_CEN;
 }
 
+/**
+ * @brief  Read ADC value from potentiometer
+ * @param  pot: Potentiometer number
+ * @param  resolution: ADC resolution
+ * @retval ADC value
+ */
 int ADC_POT(int pot, int resolution) {
     ADC1->CFGR1 = (ADC1->CFGR1 & ~(0x3 << 3)) | (resolution << 3);
     ADC1->CHSELR = (1 << (5 + pot));
@@ -79,17 +90,29 @@ int ADC_POT(int pot, int resolution) {
     return ADC1->DR;
 }
 
+/**
+ * @brief  Read ADC data
+ * @retval ADC data
+ */
 int ADC_DATA(void) {
     ADC1->CR |= ADC_CR_ADSTART;
     while (!(ADC1->ISR & 0b100));
     return ADC1->DR;
 }
 
+/**
+ * @brief  Delay in milliseconds
+ * @param  delaylength: Length of delay
+ */
 void delay_ms(uint32_t delaylength) {
     volatile int counter = delaylength * 735;
     while (counter-- > 0);
 }
 
+/**
+ * @brief  Soft start function
+ * @retval Status
+ */
 int softstart(void) {
     int i;
     for (i = 1; i < 10000; i++) {
@@ -99,6 +122,10 @@ int softstart(void) {
     return 0;
 }
 
+/**
+ * @brief  Potentiometer PWM control
+ * @retval Status
+ */
 int Pot_PWM(void) {
     while (1) {
         float P0_val = ADC_POT(0, 8);
@@ -112,16 +139,25 @@ int Pot_PWM(void) {
     }
 }
 
+/**
+ * @brief  Initialize TIM14
+ */
 void init_TIM14(void) {
     TIM14->PSC = 1;
     TIM14->ARR = 39999;
     TIM14->DIER |= TIM_DIER_UIE;
 }
 
+/**
+ * @brief  Initialize NVIC
+ */
 void init_NVIC(void) {
     NVIC_EnableIRQ(TIM14_IRQn);
 }
 
+/**
+ * @brief  TIM14 interrupt handler
+ */
 void TIM14_IRQHandler(void) {
     TIM14->SR &= ~TIM_SR_UIF;
     if (++centi_sec == 25) {
@@ -130,6 +166,9 @@ void TIM14_IRQHandler(void) {
     }
 }
 
+/**
+ * @brief  Handle brake
+ */
 void handle_brake(void) {
     TIM2->CCR3 = 0;
     TIM2->CCR4 = 0;
@@ -144,6 +183,9 @@ void handle_brake(void) {
     lcd_putstring("    Activated");
 }
 
+/**
+ * @brief  Handle drive
+ */
 void handle_drive(void) {
     GPIOB->ODR = 0b01;
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
@@ -151,6 +193,9 @@ void handle_drive(void) {
     lcd_putstring("Driving motor...");
 }
 
+/**
+ * @brief  Handle soft start
+ */
 void handle_softstart(void) {
     GPIOB->ODR = 0b101;
     lcd_command(CLEAR);
@@ -161,12 +206,19 @@ void handle_softstart(void) {
     handle_drive();
 }
 
+/**
+ * @brief  Handle reverse
+ */
 void handle_reverse(void) {
     GPIOB->ODR = 0;
     lcd_command(CLEAR);
     lcd_putstring("     Reverse");
 }
 
+/**
+ * @brief  Main function
+ * @retval int
+ */
 int main(void) {
     init_Ports();
     init_ADC();

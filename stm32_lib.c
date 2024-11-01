@@ -1,17 +1,17 @@
-//==========================================================================*
-//	INCLUDES
-//==========================================================================*
+/******************************************************************************
+ * @file    stm32_lib.c
+ * @brief   STM32 library functions
+ * @version 1.0
+ ******************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
 #include "stm32f0xx.h"
 #include "lcd_stm32f0.h"
 
-//==========================================================================*
-//	GLOBAL VARIABLES
-//==========================================================================*
+/* Global Variables ----------------------------------------------------------*/
 static int bcdArray[5];
 
-//==========================================================================*
-//	FUNCTION PROTOTYPES
-//==========================================================================*
+/* Function Prototypes -------------------------------------------------------*/
 void init_EXTI(void);
 void init_NVIC(void);
 void init_Ports(void);
@@ -24,11 +24,11 @@ int ADC_DATA(void);
 void delay_ms(uint32_t counter);
 void EXTI0_1_IRQHandler(void);
 
-//==========================================================================*
-//	FUNCTIONS
-//==========================================================================*
+/* Functions -----------------------------------------------------------------*/
 
-// Initialize External Interrupt
+/**
+ * @brief  Initialize External Interrupt
+ */
 void init_EXTI(void) {
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGCOMPEN; // Enable clock for sys config controller
     SYSCFG->EXTICR[0] |= SYSCFG_EXTICR1_EXTI1_PA; // Map PA1 to EXTI1
@@ -36,7 +36,9 @@ void init_EXTI(void) {
     EXTI->FTSR |= EXTI_FTSR_TR1; // Falling trigger enable for input line 1 (SW1)
 }
 
-// Initialize Ports
+/**
+ * @brief  Initialize Ports
+ */
 void init_Ports(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOAEN; // Enable clock for GPIOA and GPIOB
     GPIOB->MODER |= 0x505555; // Set PB0-7 as output mode, PB10 (red) and PB11 (green)
@@ -44,12 +46,16 @@ void init_Ports(void) {
     GPIOA->MODER &= 0xFFFFF0000; // Set PA0-3 to input mode
 }
 
-// Initialize NVIC
+/**
+ * @brief  Initialize NVIC
+ */
 void init_NVIC(void) {
     NVIC_EnableIRQ(EXTI0_1_IRQn); // Enable EXTI0_1 in NVIC
 }
 
-// Initialize ADC
+/**
+ * @brief  Initialize ADC
+ */
 void init_ADC(void) {
     RCC->APB2ENR |= RCC_APB2ENR_ADCEN; // Enable ADC clock
     ADC1->CFGR1 |= 0x10; // Set ADC resolution
@@ -58,7 +64,9 @@ void init_ADC(void) {
     while ((ADC1->ISR & 0x01) == 0); // Wait for ADC ready
 }
 
-// Initialize Timer 6
+/**
+ * @brief  Initialize Timer 6
+ */
 void init_Tim6(void) {
     RCC->APB1ENR |= (1 << 4); // Enable TIM6 clock
     TIM6->PSC = 2829; // Set prescaler
@@ -68,7 +76,9 @@ void init_Tim6(void) {
     NVIC_EnableIRQ(TIM6_IRQn); // Enable TIM6 interrupt
 }
 
-// Initialize PWM
+/**
+ * @brief  Initialize PWM
+ */
 void init_PWM(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN; // Enable clock for GPIOB
     GPIOB->MODER |= 0b1000000000; // Set PB1 to Alternate Function mode
@@ -83,12 +93,19 @@ void init_PWM(void) {
     TIM3->CCMR1 |= TIM_CCMR1_OC1M_1; // Set TIM3 to PWM mode 1
 }
 
-// Timer 6 Interrupt Handler
+/**
+ * @brief  Timer 6 Interrupt Handler
+ */
 void TIM6_DAC_IRQHandler(void) {
     TIM6->SR &= ~(1 << 0); // Acknowledge interrupt request
 }
 
-// ADC Potentiometer Reading
+/**
+ * @brief  ADC Potentiometer Reading
+ * @param  pot: Potentiometer number
+ * @param  resolution: ADC resolution
+ * @retval ADC value
+ */
 int ADC_POT(int pot, int resolution) {
     ADC1->CFGR1 |= (resolution << 3); // Configure resolution
     ADC1->CHSELR = (1 << (5 + pot)); // Channel select (Pot0 = PA5, Pot1 = PA6)
@@ -97,14 +114,20 @@ int ADC_POT(int pot, int resolution) {
     return ADC1->DR; // Return value
 }
 
-// ADC Data Reading
+/**
+ * @brief  ADC Data Reading
+ * @retval ADC data
+ */
 int ADC_DATA(void) {
     ADC1->CR |= ADC_CR_ADSTART; // Start ADC conversion
     while ((ADC1->ISR & 0b100) == 0); // Wait for end of conversion
     return ADC1->DR; // Return data
 }
 
-// Millisecond Delay
+/**
+ * @brief  Millisecond Delay
+ * @param  delaylength: Length of delay
+ */
 void delay_ms(uint32_t delaylength) {
     int counter = delaylength * 735;
     while (counter > 0) {
@@ -112,7 +135,9 @@ void delay_ms(uint32_t delaylength) {
     }
 }
 
-// External Interrupt Handler
+/**
+ * @brief  External Interrupt Handler
+ */
 void EXTI0_1_IRQHandler(void) {
     delay_ms(200); // Debouncing
     EXTI->PR |= EXTI_PR_PR1; // Clear interrupt pending bit

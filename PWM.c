@@ -1,9 +1,32 @@
+/******************************************************************************
+ * @file    PWM.c
+ * @brief   PWM configuration and control for STM32
+ * @version 1.0
+ ******************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f0xx.h"
+
+/* Function Prototypes -------------------------------------------------------*/
+void PWM_configure_GPIO(void);
+void PWM_configure_TIM2(void);
+void PWM_init(void);
+void PWM_softstart(uint32_t max_value, uint32_t step_delay);
+
+/* Functions -----------------------------------------------------------------*/
+
+/**
+ * @brief  Configure GPIO for PWM
+ */
 void PWM_configure_GPIO(void) {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN; // Enable clock for GPIOB
     GPIOB->MODER |= GPIO_MODER_MODER10_1 | GPIO_MODER_MODER11_1; // Set PB10 and PB11 to AF
     GPIOB->AFR[1] |= (GPIO_AFRH_AFR10_AF2 & (0b10 << 8)) | (GPIO_AFRH_AFR11_AF2 & (0b10 << 12)); // Enable AF2 for PB10 and PB11
 }
 
+/**
+ * @brief  Configure TIM2 for PWM
+ */
 void PWM_configure_TIM2(void) {
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN; // Enable TIM2
     TIM2->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1) | (TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1); // PWM Mode 1 for CH3 and CH4
@@ -15,18 +38,20 @@ void PWM_configure_TIM2(void) {
     TIM2->CR1 |= TIM_CR1_CEN; // Enable counter
 }
 
+/**
+ * @brief  Initialize PWM
+ */
 void PWM_init(void) {
-    configure_GPIO_for_PWM();
-    configure_TIM2_for_PWM();
+    PWM_configure_GPIO();
+    PWM_configure_TIM2();
 }
 
+/**
+ * @brief  Soft start for PWM
+ * @param  max_value: Maximum value for PWM
+ * @param  step_delay: Delay between steps
+ */
 void PWM_softstart(uint32_t max_value, uint32_t step_delay) {
-    // Soft start for PWM on PB10 and PB11
-    // Linear increase of PWM from 0 to 100%
-
-    // Initialize PWM if necessary
-    // init_PWM();
-
     float percent_j;
     uint32_t j;
 
