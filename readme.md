@@ -46,19 +46,3 @@ The STM32 Line Following Car is a robotic vehicle that autonomously follows a li
    - Flash the firmware onto the STM32 microcontroller.
 
 5. **Test the Car**: Place the car on a track and observe its line-following behavior.
-
-## Documentation
-
-- Refer to the `docs/` directory for detailed documentation on the project setup, code structure, and troubleshooting.
-
-## Contributing
-
-Contributions are welcome! Please fork the repository and submit a pull request for any improvements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
-
-## Acknowledgments
-
-- Special thanks to the contributors and the open-source community for their support and resources.
