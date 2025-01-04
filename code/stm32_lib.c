@@ -6,6 +6,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f0xx.h"
+#include "stm32_lib.h"
 #include "lcd_stm32f0.h"
 
 /* Global Variables ----------------------------------------------------------*/
@@ -17,6 +18,7 @@ void init_NVIC(void);
 void init_Ports(void);
 void init_ADC(void);
 void init_Tim6(void);
+void init_TIM14(void);
 void init_PWM(void);
 void TIM6_DAC_IRQHandler(void);
 int ADC_POT(int pot, int resolution);
@@ -37,13 +39,15 @@ void init_EXTI(void) {
 }
 
 /**
- * @brief  Initialize Ports
+ * @brief  Initialize GPIO ports
  */
 void init_Ports(void) {
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOAEN; // Enable clock for GPIOA and GPIOB
-    GPIOB->MODER |= 0x505555; // Set PB0-7 as output mode, PB10 (red) and PB11 (green)
-    GPIOA->PUPDR |= 0b01010101; // Enable pull-up resistors for SW0-3
-    GPIOA->MODER &= 0xFFFFF0000; // Set PA0-3 to input mode
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOAEN;
+    GPIOB->MODER |= (GPIO_MODER_MODER0_0 | GPIO_MODER_MODER1_0 | GPIO_MODER_MODER2_0 |
+                     GPIO_MODER_MODER3_0 | GPIO_MODER_MODER4_0 | GPIO_MODER_MODER5_0 |
+                     GPIO_MODER_MODER6_0 | GPIO_MODER_MODER7_0 | GPIO_MODER_MODER12_0);
+    GPIOA->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2 | GPIO_MODER_MODER3);
+    GPIOA->PUPDR |= (GPIO_PUPDR_PUPDR0_0 | GPIO_PUPDR_PUPDR1_0 | GPIO_PUPDR_PUPDR2_0 | GPIO_PUPDR_PUPDR3_0);
 }
 
 /**
@@ -77,20 +81,29 @@ void init_Tim6(void) {
 }
 
 /**
+ * @brief  Initialize TIM14
+ */
+void init_TIM14(void) {
+    TIM14->PSC = 1;
+    TIM14->ARR = 39999;
+    TIM14->DIER |= TIM_DIER_UIE;
+}
+
+/**
  * @brief  Initialize PWM
  */
 void init_PWM(void) {
-    RCC->AHBENR |= RCC_AHBENR_GPIOBEN; // Enable clock for GPIOB
-    GPIOB->MODER |= 0b1000000000; // Set PB1 to Alternate Function mode
-    GPIOB->AFR[1] |= GPIO_AFRL_AFRL1; // Set PB1 to AF1 (TIM3 CH1)
-
-    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN; // Enable TIM3 clock
-    TIM3->ARR = 2829; // Set PWM frequency
-    TIM3->CCR1 = 32768; // Set PWM duty cycle
-    TIM3->CR1 |= TIM_CR1_CEN | TIM_CR1_ARPE; // Enable TIM3 count and auto-reload preload
-
-    TIM3->EGR |= TIM_EGR_UG | TIM_EGR_CC1G; // Re-initialize counter and generate capture/compare event
-    TIM3->CCMR1 |= TIM_CCMR1_OC1M_1; // Set TIM3 to PWM mode 1
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    GPIOB->MODER |= (GPIO_MODER_MODER10_1 | GPIO_MODER_MODER11_1);
+    GPIOB->AFR[1] |= (GPIO_AFRH_AFR10_AF2 & (GPIO_AF2 << 8)) | (GPIO_AFRH_AFR11_AF2 & (GPIO_AF2 << 12));
+    TIM2->ARR = 8000;
+    TIM2->PSC = 0;
+    TIM2->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1) | (TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1);
+    TIM2->CCR3 = 0;
+    TIM2->CCR4 = 0;
+    TIM2->CCER |= TIM_CCER_CC3E | TIM_CCER_CC4E;
+    TIM2->CR1 |= TIM_CR1_CEN;
 }
 
 /**
