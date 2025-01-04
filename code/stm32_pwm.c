@@ -9,19 +9,6 @@
 #include "stm32_PWM.h"
 #include "delay.h"
 
-/* Function Prototypes -------------------------------------------------------*/
-void PWM_configure_GPIO(void);
-void PWM_configure_TIM2(void);
-void PWM_init(void);
-void PWM_softstart(uint32_t max_value, uint32_t step_delay);
-void PWM_handle_brake(void);
-void PWM_handle_drive(void);
-void PWM_handle_softstart(void);
-void PWM_handle_reverse(void);
-int PWM_pot_control(void);
-
-/* Functions -----------------------------------------------------------------*/
-
 /**
  * @brief  Configure GPIO for PWM
  */
