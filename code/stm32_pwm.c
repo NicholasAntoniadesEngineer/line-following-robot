@@ -56,7 +56,8 @@ void PWM_softstart(uint32_t max_value, uint32_t step_delay)
     TIM2->CCR4 = 0;
     TIM2->CCR3 = 0;
 
-    for (uint32_t i = 1; i <= max_value; i++) {
+    for (uint32_t i = 1; i <= max_value; i++) 
+    {
         percent_j = (i / (float)max_value);
         j = percent_j * 100;
         TIM2->CCR3 = j * 480;
@@ -65,6 +66,7 @@ void PWM_softstart(uint32_t max_value, uint32_t step_delay)
         // Delay to control the speed of the soft start
         delay_ms(step_delay);
     }
+    
 }
 
 /**
@@ -112,15 +114,19 @@ void PWM_handle_reverse(void)
  * @brief  Potentiometer PWM control
  * @retval Status
  */
-int PWM_pot_control(void) {
-    while (1) {
+int PWM_pot_control(void) 
+{
+    while (1) 
+    {
         float P0_val = ADC_POT(0, 8);
         float P1_val = ADC_POT(1, 8);
         TIM2->CCR3 = (P0_val / 255) * 80000;
         TIM2->CCR4 = (P1_val / 255) * 80000;
 
-        if (!(GPIOA->IDR & (GPIO_IDR_0 | GPIO_IDR_1 | GPIO_IDR_2 | GPIO_IDR_3))) {
+        if (!(GPIOA->IDR & (GPIO_IDR_0 | GPIO_IDR_1 | GPIO_IDR_2 | GPIO_IDR_3))) 
+        {
             return 0;
         }
+        
     }
 }
