@@ -18,7 +18,4 @@ int ADC_DATA(void);
 void delay_ms(uint32_t counter);
 void EXTI0_1_IRQHandler(void);
 
-/* Global Variables */
-extern int bcdArray[5];
-
 #endif /* STM32_LIB_H */ 
