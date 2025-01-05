@@ -1,7 +1,6 @@
 /******************************************************************************
- * @file    PWM.h
+ * @file    stm32_pwm.h
  * @brief   PWM configuration and control for STM32 - Header file
- * @version 1.0
  ******************************************************************************/
 
 #ifndef STM32_PWM_H
