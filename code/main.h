@@ -1,6 +1,6 @@
 /******************************************************************************
  * @file    main.h
- * @brief   Header file for main.c in line-following robot
+ * @brief   Header file for main.c in line-following-robot
  * @version 1.0
  ******************************************************************************/
 
