@@ -12,7 +12,7 @@
 /**
  * @brief  Configure GPIO for PWM
  */
-void PWM_configure_GPIO(void) 
+void stm32_pwm_configure_gpio(void) 
 {
     RCC->AHBENR |= RCC_AHBENR_GPIOBEN; // Enable clock for GPIOB
     GPIOB->MODER |= GPIO_MODER_MODER10_1 | GPIO_MODER_MODER11_1; // Set PB10 and PB11 to AF
@@ -22,7 +22,7 @@ void PWM_configure_GPIO(void)
 /**
  * @brief  Configure TIM2 for PWM
  */
-void PWM_configure_TIM2(void) 
+void stm32_pwm_configure_tim2(void) 
 {
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN; // Enable TIM2
     TIM2->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1) | (TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1); // PWM Mode 1 for CH3 and CH4
@@ -37,10 +37,10 @@ void PWM_configure_TIM2(void)
 /**
  * @brief  Initialize PWM
  */
-void PWM_init(void) 
+void stm32_pwm_init(void) 
 {
-    PWM_configure_GPIO();
-    PWM_configure_TIM2();
+    stm32_pwm_configure_gpio();
+    stm32_pwm_configure_tim2();
 }
 
 /**
@@ -48,7 +48,7 @@ void PWM_init(void)
  * @param  max_value: Maximum value for PWM
  * @param  step_delay: Delay between steps
  */
-void PWM_softstart(uint32_t max_value, uint32_t step_delay) 
+void stm32_pwm_softstart(uint32_t max_value, uint32_t step_delay) 
 {
     float percent_j;
     uint32_t j;
@@ -72,7 +72,7 @@ void PWM_softstart(uint32_t max_value, uint32_t step_delay)
 /**
  * @brief  Handle brake
  */
-void PWM_handle_brake(void) 
+void stm32_pwm_handle_brake(void) 
 {
     TIM2->CCR3 = 0;
     TIM2->CCR4 = 0;
@@ -86,7 +86,7 @@ void PWM_handle_brake(void)
 /**
  * @brief  Handle drive
  */
-void PWM_handle_drive(void) 
+void stm32_pwm_handle_drive(void) 
 {
     GPIOB->ODR = 0b01;
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
@@ -95,16 +95,16 @@ void PWM_handle_drive(void)
 /**
  * @brief  Handle soft start
  */
-void PWM_handle_softstart(void) 
+void stm32_pwm_handle_softstart(void) 
 {
     GPIOB->ODR = 0b101;
-    PWM_softstart(100, 10);
+    stm32_pwm_softstart(100, 10);
 }
 
 /**
  * @brief  Handle reverse operation
  */
-void PWM_handle_reverse(void) 
+void stm32_pwm_handle_reverse(void) 
 {
     GPIOB->ODR = 0b100;
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
@@ -114,12 +114,13 @@ void PWM_handle_reverse(void)
  * @brief  Potentiometer PWM control
  * @retval Status
  */
-int PWM_pot_control(void) 
+int stm32_pwm_set_speed(void) 
 {
     while (1) 
     {
         float P0_val = ADC_POT(0, 8);
         float P1_val = ADC_POT(1, 8);
+        
         TIM2->CCR3 = (P0_val / 255) * 80000;
         TIM2->CCR4 = (P1_val / 255) * 80000;
 
