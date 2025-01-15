@@ -1,4 +1,4 @@
-# STM32 Line Following Car
+# STM32 Line Following Car (2018)
 
 This repository contains the code and documentation for a line-following car project using an STM32 microcontroller. The project is designed to demonstrate the capabilities of embedded systems in robotics applications.
 
