@@ -71,7 +71,6 @@ static void robot_state_machine(void)
 int main(void) 
 {
     init_stm32();
-    
     lcd_display("SW0: Brakes", "SW1: Reactivate");
 
     while (1) 
