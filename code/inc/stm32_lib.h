@@ -65,23 +65,25 @@ typedef struct {
     uint32_t pulse;             /* Timer pulse value */
 } stm32_pwm_state_t;
 
-// System Configuration Structure
+// System State Structure
 typedef struct {
-    stm32_adc_state_t *adc_states;    /* Array of ADC configurations */
-    uint8_t num_adc_channels;         /* Number of ADC channels to configure */
-    stm32_pwm_state_t *pwm_states;    /* Array of PWM configurations */
-    uint8_t num_pwm_channels;         /* Number of PWM channels to configure */
-    stm32_port_state_t port_state;    /* Port configuration */
-} stm32_system_config_t;
+    stm32_adc_state_t *adc_states;    /* Array of ADC states */
+    uint8_t num_adc_channels;         /* Number of ADC channels */
+    stm32_pwm_state_t *pwm_states;    /* Array of PWM states */
+    uint8_t num_pwm_channels;         /* Number of PWM channels */
+    stm32_port_state_t port_state;    /* Port state */
+} stm32_system_state_t;
 
 // Function prototypes
-void stm32_lib_port_init(void);
+void stm32_lib_port_init(stm32_port_state_t *port_state);
 void stm32_lib_init_pwm_tim(TIM_HandleTypeDef *htim, uint32_t channel, uint32_t frequency);
 void stm32_lib_init_pwm(int frequency);
 void stm32_lib_init_adc(const stm32_adc_state_t *adc_states, uint8_t num_channels);
 void stm32_lib_init_usart(UART_HandleTypeDef *huart);
 void stm32_lib_init_usart1(void);
 void stm32_lib_init_tim6(uint32_t arr, uint32_t psc);
+void stm32_lib_init_lcd(void);
+void stm32_lib_init_nvic(void);
 int stm32_lib_adc_input(int pot, int resolution);
 void stm32_lib_adc_awd_8bit(int ADC_channel, int ADC_Low_threshhold, int ADC_High_threshhold);
 int stm32_lib_adc_awd_check(void);
@@ -98,6 +100,6 @@ void stm32_lib_usart1_transmit(unsigned char DataToTx);
 unsigned char stm32_lib_usart1_receive(void);
 void stm32_lib_sig_gen_init(stm32_sig_gen_state_t *state);
 void stm32_lib_port_init(stm32_uart_state_t *uart_state, const stm32_uart_state_t *config);
-void stm32_lib_init(const stm32_system_config_t *config);
+void stm32_lib_timer_set_compare(TIM_HandleTypeDef *timer, uint32_t channel, uint32_t value);
 
 #endif /* STM32_LIB_H_ */ 

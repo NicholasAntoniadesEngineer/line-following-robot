@@ -355,3 +355,11 @@ void stm32_lib_init(const stm32_system_config_t *config)
                               config->pwm_states[i].frequency);
     }
 }
+
+void stm32_lib_timer_set_compare(TIM_HandleTypeDef *timer, uint32_t channel, uint32_t value)
+{
+    if (!timer) return;
+    
+    // Call BSP layer to handle the hardware access
+    stm32_bsp_timer_set_compare(timer->Instance, channel, value);
+}
