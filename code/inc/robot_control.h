@@ -37,8 +37,7 @@ typedef struct {
  * @brief Initialize STM32 peripherals for the robot
  * @param state Pointer to system state
  */
-void robot_control_stm32_init(const robot_control_state_t *state);
-
+void robot_control_system_init(const robot_control_state_t *state);
 void robot_control_handle_brake(const robot_control_state_t *state);
 void robot_control_handle_drive(const robot_control_state_t *state);
 void robot_control_handle_softstart(const robot_control_state_t *state, uint32_t max_value, uint32_t step_delay);

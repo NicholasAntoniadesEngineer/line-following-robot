@@ -11,7 +11,7 @@
  * @brief Initialize STM32 peripherals for the robot
  * @param state Pointer to system state
  */
-void robot_control_stm32_init(const robot_control_state_t *state)
+void robot_control_system_init(const robot_control_state_t *state)
 {
     if (!state) return;
 
@@ -49,6 +49,39 @@ void robot_control_stm32_init(const robot_control_state_t *state)
 
     // Initialize interrupts
     stm32_lib_init_nvic();
+}
+
+/**
+ * @brief Handle robot state transitions based on button inputs
+ * @param state Pointer to system state
+ */
+void robot_control_state_machine(const robot_control_state_t *state)
+{
+    if (!state) return;
+
+    // Check buttons using state configuration
+    if (stm32_lib_check_button(GPIOA, state->button_state.brake_pin)) 
+    {
+        robot_control_handle_brake(state);
+        robot_control_lcd_print("     Brake", "    Activated");
+    } 
+    else if (stm32_lib_check_button(GPIOA, state->button_state.drive_pin)) 
+    {
+        robot_control_handle_drive(state);
+        robot_control_lcd_print("Driving motor...", "");
+    } 
+    else if (stm32_lib_check_button(GPIOA, state->button_state.softstart_pin)) 
+    {
+        robot_control_lcd_print("    Softstart", "    Activated");
+        robot_control_handle_softstart(state, state->softstart_state.max_value, state->softstart_state.step_delay);
+        robot_control_handle_drive(state);
+        robot_control_lcd_print("Driving motor...", "");
+    } 
+    else if (stm32_lib_check_button(GPIOA, state->button_state.reverse_pin)) 
+    {
+        robot_control_handle_reverse(state);
+        robot_control_lcd_print("     Reverse", "");
+    }
 }
 
 /**
@@ -179,39 +212,6 @@ void robot_control_update_motor_speeds(const robot_control_state_t *state)
         stm32_lib_timer_set_compare(state->pwm_states[i].timer,
                                   state->pwm_states[i].channel,
                                   state->pwm_states[i].pulse);
-    }
-}
-
-/**
- * @brief Handle robot state transitions based on button inputs
- * @param state Pointer to system state
- */
-void robot_control_state_machine(const robot_control_state_t *state)
-{
-    if (!state) return;
-
-    // Check buttons using state configuration
-    if (stm32_lib_check_button(GPIOA, state->button_state.brake_pin)) 
-    {
-        robot_control_handle_brake(state);
-        robot_control_lcd_print("     Brake", "    Activated");
-    } 
-    else if (stm32_lib_check_button(GPIOA, state->button_state.drive_pin)) 
-    {
-        robot_control_handle_drive(state);
-        robot_control_lcd_print("Driving motor...", "");
-    } 
-    else if (stm32_lib_check_button(GPIOA, state->button_state.softstart_pin)) 
-    {
-        robot_control_lcd_print("    Softstart", "    Activated");
-        robot_control_handle_softstart(state, state->softstart_state.max_value, state->softstart_state.step_delay);
-        robot_control_handle_drive(state);
-        robot_control_lcd_print("Driving motor...", "");
-    } 
-    else if (stm32_lib_check_button(GPIOA, state->button_state.reverse_pin)) 
-    {
-        robot_control_handle_reverse(state);
-        robot_control_lcd_print("     Reverse", "");
     }
 }
 

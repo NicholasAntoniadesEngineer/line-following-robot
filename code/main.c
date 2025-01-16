@@ -86,9 +86,8 @@ int main(void)
     // Create and initialize system state
     robot_control_state_t system_state;
     _init_state(&system_state);
-
-    // Initialize all STM32 peripherals and subsystems
-    robot_control_stm32_init(&system_state);
+    
+    robot_control_system_init(&system_state);
 
     while (1) 
     {
