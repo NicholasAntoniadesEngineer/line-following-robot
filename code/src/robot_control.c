@@ -51,14 +51,17 @@ void robot_control_handle_brake(const stm32_system_state_t *state)
                                   0);
     }
 
-    // Set brake pin
-    GPIOB->ODR = 0;
-    GPIOB->ODR |= 0b10000000;
+    // Set brake pin using state configuration
+    GPIO_TypeDef* brake_port = state->port_state.brake_port;
+    uint16_t brake_pin = state->port_state.brake_pin;
+    
+    stm32_lib_gpio_set_port(brake_port, 0);
+    stm32_lib_gpio_set_pin(brake_port, brake_pin, 1);
 
-    // Disable PWM timer
-    RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;
-    stm32_lib_init_tim6(0, 0);  // Initialize timer with 0 values
-    RCC->APB1ENR &= ~RCC_APB1ENR_TIM2EN;
+    // Configure timers using state configuration
+    stm32_lib_timer_enable(state->timer_state.control_timer);
+    stm32_lib_timer_init(state->timer_state.pwm_timer, 0, 0);
+    stm32_lib_timer_disable(state->timer_state.motor_timer);
 }
 
 /**
@@ -69,8 +72,9 @@ void robot_control_handle_drive(const stm32_system_state_t *state)
 {
     if (!state) return;
 
-    GPIOB->ODR = 0b01;
-    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    // Use state configuration for GPIO and timer settings
+    stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.drive_pattern);
+    stm32_lib_timer_enable(state->timer_state.motor_timer);
 }
 
 /**
@@ -83,13 +87,14 @@ void robot_control_handle_softstart(const stm32_system_state_t *state, uint32_t 
 {
     if (!state) return;
 
-    GPIOB->ODR = 0b101;
+    // Set control pattern from state
+    stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.softstart_pattern);
 
     // Gradually increase PWM values
     for (uint32_t i = 1; i <= max_value; i++) 
     {
         float percent = i / (float)max_value;
-        uint32_t pwm_value = (percent * 100) * 480;
+        uint32_t pwm_value = (percent * state->pwm_states[0].period);
 
         // Update both motors
         for (uint8_t j = 0; j < state->num_pwm_channels; j++) 
@@ -111,8 +116,9 @@ void robot_control_handle_reverse(const stm32_system_state_t *state)
 {
     if (!state) return;
 
-    GPIOB->ODR = 0b100;
-    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    // Set reverse pattern from state
+    stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.reverse_pattern);
+    stm32_lib_timer_enable(state->timer_state.motor_timer);
 }
 
 /**
@@ -164,27 +170,24 @@ void robot_control_state_machine(const stm32_system_state_t *state,
 {
     if (!state || !display_callback) return;
 
-    // Check brake button
-    if (!(GPIOA->IDR & BRAKE_PIN)) 
+    // Check buttons using state configuration
+    if (stm32_lib_check_button_gpioa(state->button_state.brake_pin)) 
     {
         robot_control_handle_brake(state);
         display_callback("     Brake", "    Activated");
     } 
-    // Check drive button
-    else if (!(GPIOA->IDR & DRIVE_PIN)) 
+    else if (stm32_lib_check_button_gpioa(state->button_state.drive_pin)) 
     {
         robot_control_handle_drive(state);
     } 
-    // Check softstart button
-    else if (!(GPIOA->IDR & SOFTSTART_PIN)) 
+    else if (stm32_lib_check_button_gpioa(state->button_state.softstart_pin)) 
     {
         display_callback("    Softstart", "    Activated");
-        robot_control_handle_softstart(state, 100, 10);
+        robot_control_handle_softstart(state, state->softstart_state.max_value, state->softstart_state.step_delay);
         robot_control_handle_drive(state);
         display_callback("Driving motor...", "");
     } 
-    // Check reverse button
-    else if (!(GPIOA->IDR & REVERSE_PIN)) 
+    else if (stm32_lib_check_button_gpioa(state->button_state.reverse_pin)) 
     {
         display_callback("     Reverse", "");
         robot_control_handle_reverse(state);

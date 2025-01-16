@@ -12,29 +12,145 @@
 #include "stm32f051x8.h"
 #include "stm32_bsp.h"
 
-void stm32_lib_port_init(port_config_t *port_config) {
-	if (!port_config) return;
+/**
+ * @brief Initialize port with given configuration
+ * @param port_state Pointer to port state structure
+ */
+void stm32_lib_port_init(stm32_port_state_t *port_state) 
+{
+	if (!port_state) return;
 
 	// Initialize GPIOA
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-	for (int i = 0; i < port_config->num_pins_a; i++) {
-		GPIOA->MODER &= ~(0x3 << (port_config->pins_a[i].pin * 2));
-		GPIOA->MODER |= (port_config->pins_a[i].mode << (port_config->pins_a[i].pin * 2));
-		GPIOA->PUPDR &= ~(0x3 << (port_config->pins_a[i].pin * 2));
-		GPIOA->PUPDR |= (port_config->pins_a[i].pull << (port_config->pins_a[i].pin * 2));
+	for (int i = 0; i < port_state->num_pins_a; i++) {
+		GPIOA->MODER &= ~(0x3 << (port_state->pins_a[i].pin * 2));
+		GPIOA->MODER |= (port_state->pins_a[i].mode << (port_state->pins_a[i].pin * 2));
+		GPIOA->PUPDR &= ~(0x3 << (port_state->pins_a[i].pin * 2));
+		GPIOA->PUPDR |= (port_state->pins_a[i].pull << (port_state->pins_a[i].pin * 2));
 	}
 
 	// Initialize GPIOB
 	RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
-	for (int i = 0; i < port_config->num_pins_b; i++) {
-		GPIOB->MODER &= ~(0x3 << (port_config->pins_b[i].pin * 2));
-		GPIOB->MODER |= (port_config->pins_b[i].mode << (port_config->pins_b[i].pin * 2));
-		GPIOB->PUPDR &= ~(0x3 << (port_config->pins_b[i].pin * 2));
-		GPIOB->PUPDR |= (port_config->pins_b[i].pull << (port_config->pins_b[i].pin * 2));
+	for (int i = 0; i < port_state->num_pins_b; i++) {
+		GPIOB->MODER &= ~(0x3 << (port_state->pins_b[i].pin * 2));
+		GPIOB->MODER |= (port_state->pins_b[i].mode << (port_state->pins_b[i].pin * 2));
+		GPIOB->PUPDR &= ~(0x3 << (port_state->pins_b[i].pin * 2));
+		GPIOB->PUPDR |= (port_state->pins_b[i].pull << (port_state->pins_b[i].pin * 2));
+	}
+}
+
+/**
+ * @brief Initialize PWM timer with given parameters
+ * @param htim Timer handle
+ * @param channel Timer channel
+ * @param frequency PWM frequency
+ */
+void stm32_lib_init_pwm_tim(TIM_HandleTypeDef *htim, uint32_t channel, uint32_t frequency)
+{
+	if (!htim) return;
+
+	// Enable timer clock
+	if (htim->Instance == TIM2) {
+		RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
 	}
 
-	// Call BSP or HAL init if needed
-	stm32_bsp_gpio_init();
+	// Configure timer for PWM
+	htim->Instance->PSC = 0;
+	htim->Instance->ARR = frequency;
+	
+	// Configure PWM mode based on channel
+	switch(channel) {
+		case TIM_CHANNEL_1:
+			htim->Instance->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
+			htim->Instance->CCER |= TIM_CCER_CC1E;
+			break;
+		case TIM_CHANNEL_2:
+			htim->Instance->CCMR1 |= (TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1);
+			htim->Instance->CCER |= TIM_CCER_CC2E;
+			break;
+		case TIM_CHANNEL_3:
+			htim->Instance->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1);
+			htim->Instance->CCER |= TIM_CCER_CC3E;
+			break;
+		case TIM_CHANNEL_4:
+			htim->Instance->CCMR2 |= (TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1);
+			htim->Instance->CCER |= TIM_CCER_CC4E;
+			break;
+	}
+
+	// Enable timer
+	htim->Instance->CR1 |= TIM_CR1_CEN;
+}
+
+/**
+ * @brief Initialize ADC with given states
+ * @param adc_states Array of ADC state structures
+ * @param num_channels Number of ADC channels to initialize
+ */
+void stm32_lib_init_adc(const stm32_adc_state_t *adc_states, uint8_t num_channels)
+{
+	if (!adc_states || num_channels == 0) return;
+
+	// Enable ADC clock
+	RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
+
+	// Start calibration
+	ADC1->CR |= ADC_CR_ADCAL;
+	while((ADC1->CR & ADC_CR_ADCAL) != 0); // Wait for calibration to complete
+
+	// Configure ADC
+	uint32_t chselr = 0;
+	uint8_t max_resolution = 0;
+
+	// Collect configuration from all channels
+	for (uint8_t i = 0; i < num_channels; i++) {
+		chselr |= (1 << adc_states[i].channel);
+		if (adc_states[i].resolution > max_resolution) {
+			max_resolution = adc_states[i].resolution;
+		}
+	}
+
+	// Set resolution (use highest requested)
+	ADC1->CFGR1 = ((max_resolution - 6) / 2) << 3; // Convert 8,10,12 bit to 0,1,2
+
+	// Set channel selection register
+	ADC1->CHSELR = chselr;
+
+	// Enable ADC
+	ADC1->CR |= ADC_CR_ADEN;
+	while((ADC1->ISR & ADC_ISR_ADRDY) == 0); // Wait for ADC ready
+}
+
+/**
+ * @brief Initialize LCD
+ */
+void stm32_lib_init_lcd(void)
+{
+	// Call BSP layer for LCD initialization
+	stm32_bsp_init_lcd();
+}
+
+/**
+ * @brief Initialize NVIC
+ */
+void stm32_lib_init_nvic(void)
+{
+	// Call BSP layer for NVIC initialization
+	stm32_bsp_init_nvic();
+}
+
+/**
+ * @brief Set timer compare value
+ * @param timer Timer handle
+ * @param channel Timer channel
+ * @param value Compare value
+ */
+void stm32_lib_timer_set_compare(TIM_HandleTypeDef *timer, uint32_t channel, uint32_t value)
+{
+	if (!timer) return;
+
+	// Call BSP layer to set timer compare value
+	stm32_bsp_timer_set_compare(timer->Instance, channel, value);
 }
 
 // Initializing the PWM output
@@ -190,7 +306,7 @@ void stm32_lib_init_exti(void)
 }
 
 
-void stm32_lib_init_usart1(void)
+void stm32_system_state_t(void)
 {
 	// Must enable usart1_DE and the associated pins AF
 	// Program the M bits in USARTx_CR1 to define the word length.
@@ -212,40 +328,37 @@ void stm32_lib_init_usart1(void)
 
 void stm32_lib_usart1_transmit(unsigned char DataToTx)
 {
-	// wait until TXE = 1 before writing int tdr
-
-	USART1 -> TDR = DataToTx; 					// write character �c� to the USART1_TDR
-	while((USART1 -> ISR & USART_ISR_TC) == 0); // wait: transmission complete
+    USART1->TDR = DataToTx;                           // Write character to the USART1_TDR
+    while((USART1->ISR & USART_ISR_TC) == 0);        // Wait: transmission complete
 }
 
 unsigned char stm32_lib_usart1_receive(void)
 {
-	unsigned char DataRx = 'z';					  // global
-	while((USART1 -> ISR & USART_ISR_RXNE) == 0); // exits loop when data is received
-	DataRx = USART1 -> RDR; 					  // store received data into �DataRx� variable
-	USART1 -> ICR = 0b111111111111111111111;
-	return DataRx;
+    unsigned char DataRx = 'z';                       // Default value
+    while((USART1->ISR & USART_ISR_RXNE) == 0);      // Wait until data is received
+    DataRx = USART1->RDR;                            // Store received data
+    USART1->ICR = 0b111111111111111111111;          // Clear flags
+    return DataRx;
 }
 
-void stm32_lib_lock_crystal(void) 
+void stm32_lib_lock_crystal(void)
 {
-  RCC->CR |= RCC_CR_HSEON; // enable HSE
-  while(!(RCC->CR & RCC_CR_HSERDY)); // hange here until HSE ready
-  // the following adds a wait state to Flash reads and enables the prefetch buffer. This may or may not be necessary...
-  FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY;
-  RCC->CFGR |= RCC_CFGR_PLLMUL6; // PLLCLK = HSE * 6 = 8 * 6 = 48 MHz = maximum
-  RCC->CFGR |= RCC_CFGR_PLLSRC_HSE_PREDIV; // select HSE as source for PLL
-  RCC->CR |= RCC_CR_PLLON; // enable the PLL
-  while(!(RCC->CR & RCC_CR_PLLRDY)); // hang here until PLL ready
-  RCC->CFGR |= RCC_CFGR_SW_PLL; // SYSCLK sourced from PLL
-  while(!(RCC->CFGR & RCC_CFGR_SWS_PLL)); // hang until SYSLK switched
+    RCC->CR |= RCC_CR_HSEON;                         // Enable HSE
+    while(!(RCC->CR & RCC_CR_HSERDY));               // Wait until HSE ready
+    FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY;
+    RCC->CFGR |= RCC_CFGR_PLLMUL6;                  // PLLCLK = HSE * 6 = 48 MHz
+    RCC->CFGR |= RCC_CFGR_PLLSRC_HSE_PREDIV;        // Select HSE as PLL source
+    RCC->CR |= RCC_CR_PLLON;                         // Enable PLL
+    while(!(RCC->CR & RCC_CR_PLLRDY));               // Wait until PLL ready
+    RCC->CFGR |= RCC_CFGR_SW_PLL;                    // SYSCLK from PLL
+    while(!(RCC->CFGR & RCC_CFGR_SWS_PLL));          // Wait until switched
 }
 
-void stm32_lib_unlock_crystal(void) 
+void stm32_lib_unlock_crystal(void)
 {
-  RCC->CFGR &= ~RCC_CFGR_SW; // clear the SYSCLK selection bits, causing SYSCLK to be sourced from HSI
-  while(RCC->CFGR & RCC_CFGR_SWS_PLL); // hang until SYSLK no longer PLL
-  RCC->CR &= ~RCC_CR_HSEON;
+    RCC->CFGR &= ~RCC_CFGR_SW;                       // Clear SYSCLK selection
+    while(RCC->CFGR & RCC_CFGR_SWS_PLL);             // Wait until switched
+    RCC->CR &= ~RCC_CR_HSEON;                        // Disable HSE
 }
 
 void stm32_lib_sig_gen_init(stm32_sig_gen_state_t *state, const stm32_sig_gen_state_t *config)
@@ -356,10 +469,75 @@ void stm32_lib_init(const stm32_system_config_t *config)
     }
 }
 
-void stm32_lib_timer_set_compare(TIM_HandleTypeDef *timer, uint32_t channel, uint32_t value)
+/**
+ * @brief Set specific GPIO pin state
+ * @param gpio GPIO port
+ * @param pin Pin number
+ * @param state Pin state (0 or 1)
+ */
+void stm32_lib_gpio_set_pin(GPIO_TypeDef* gpio, uint16_t pin, uint8_t state)
+{
+    if (!gpio) return;
+    
+    if (state) {
+        gpio->ODR |= (1 << pin);
+    } else {
+        gpio->ODR &= ~(1 << pin);
+    }
+}
+
+/**
+ * @brief Set entire GPIO port value
+ * @param gpio GPIO port
+ * @param value Port value
+ */
+void stm32_lib_gpio_set_port(GPIO_TypeDef* gpio, uint16_t value)
+{
+    if (!gpio) return;
+    gpio->ODR = value;
+}
+
+/**
+ * @brief Enable timer
+ * @param timer Timer peripheral
+ */
+void stm32_lib_timer_enable(TIM_TypeDef* timer)
 {
     if (!timer) return;
     
-    // Call BSP layer to handle the hardware access
-    stm32_bsp_timer_set_compare(timer->Instance, channel, value);
+    if (timer == TIM14) {
+        RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;
+    } else if (timer == TIM2) {
+        RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    }
+}
+
+/**
+ * @brief Disable timer
+ * @param timer Timer peripheral
+ */
+void stm32_lib_timer_disable(TIM_TypeDef* timer)
+{
+    if (!timer) return;
+    
+    if (timer == TIM14) {
+        RCC->APB1ENR &= ~RCC_APB1ENR_TIM14EN;
+    } else if (timer == TIM2) {
+        RCC->APB1ENR &= ~RCC_APB1ENR_TIM2EN;
+    }
+}
+
+/**
+ * @brief Initialize timer with given parameters
+ * @param timer Timer peripheral
+ * @param arr Auto-reload value
+ * @param psc Prescaler value
+ */
+void stm32_lib_timer_init(TIM_TypeDef* timer, uint32_t arr, uint32_t psc)
+{
+    if (!timer) return;
+    
+    timer->ARR = arr;
+    timer->PSC = psc;
+    timer->CR1 |= TIM_CR1_CEN;
 }
