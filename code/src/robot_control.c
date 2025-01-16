@@ -5,12 +5,13 @@
 
 #include "robot_control.h"
 #include "stm32_lib.h"
+#include "lcd_stm32f0.h"
 
 /**
  * @brief Initialize STM32 peripherals for the robot
  * @param state Pointer to system state
  */
-void robot_control_stm32_init(const stm32_system_state_t *state)
+void robot_control_stm32_init(const robot_control_state_t *state)
 {
     if (!state) return;
 
@@ -28,8 +29,12 @@ void robot_control_stm32_init(const stm32_system_state_t *state)
                               state->pwm_states[i].frequency);
     }
 
-    // Initialize LCD
+    // Initialize LCD and display initial message
     stm32_lib_init_lcd();
+    lcd_command(CLEAR);
+    lcd_putstring("SW0: Brakes");
+    lcd_command(LINE_TWO);
+    lcd_putstring("SW1: Reactivate");
 
     // Initialize interrupts
     stm32_lib_init_nvic();
@@ -39,7 +44,7 @@ void robot_control_stm32_init(const stm32_system_state_t *state)
  * @brief Handle brake state
  * @param state Pointer to system state
  */
-void robot_control_handle_brake(const stm32_system_state_t *state)
+void robot_control_handle_brake(const robot_control_state_t *state)
 {
     if (!state) return;
 
@@ -59,19 +64,29 @@ void robot_control_handle_brake(const stm32_system_state_t *state)
     stm32_lib_timer_enable(state->timer_state.control_timer);
     stm32_lib_timer_init(state->timer_state.pwm_timer, 0, 0);
     stm32_lib_timer_disable(state->timer_state.motor_timer);
+
+    // Update LCD display
+    lcd_command(CLEAR);
+    lcd_putstring("     Brake");
+    lcd_command(LINE_TWO);
+    lcd_putstring("    Activated");
 }
 
 /**
  * @brief Handle drive state
  * @param state Pointer to system state
  */
-void robot_control_handle_drive(const stm32_system_state_t *state)
+void robot_control_handle_drive(const robot_control_state_t *state)
 {
     if (!state) return;
 
     // Use state configuration for GPIO and timer settings
     stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.drive_pattern);
     stm32_lib_timer_enable(state->timer_state.motor_timer);
+
+    // Update LCD display
+    lcd_command(CLEAR);
+    lcd_putstring("Driving motor...");
 }
 
 /**
@@ -80,9 +95,15 @@ void robot_control_handle_drive(const stm32_system_state_t *state)
  * @param max_value Maximum PWM value
  * @param step_delay Delay between steps
  */
-void robot_control_handle_softstart(const stm32_system_state_t *state, uint32_t max_value, uint32_t step_delay)
+void robot_control_handle_softstart(const robot_control_state_t *state, uint32_t max_value, uint32_t step_delay)
 {
     if (!state) return;
+
+    // Update LCD display
+    lcd_command(CLEAR);
+    lcd_putstring("    Softstart");
+    lcd_command(LINE_TWO);
+    lcd_putstring("    Activated");
 
     // Set control pattern from state
     stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.softstart_pattern);
@@ -109,28 +130,31 @@ void robot_control_handle_softstart(const stm32_system_state_t *state, uint32_t 
  * @brief Handle reverse state
  * @param state Pointer to system state
  */
-void robot_control_handle_reverse(const stm32_system_state_t *state)
+void robot_control_handle_reverse(const robot_control_state_t *state)
 {
     if (!state) return;
 
     // Set reverse pattern from state
     stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.reverse_pattern);
     stm32_lib_timer_enable(state->timer_state.motor_timer);
+
+    // Update LCD display
+    lcd_command(CLEAR);
+    lcd_putstring("     Reverse");
 }
 
 /**
  * @brief Read sensor values and update ADC states
  * @param state Pointer to system state
  */
-void robot_control_read_sensors(const stm32_system_state_t *state)
+void robot_control_read_sensors(const robot_control_state_t *state)
 {
     if (!state) return;
 
     // Read ADC values from IR sensors
     for (uint8_t i = 0; i < state->num_adc_channels; i++) 
     {
-        stm32_lib_adc_input(state->adc_states[i].channel, 
-                           state->adc_states[i].resolution);
+        stm32_lib_adc_input(state->adc_states[i].channel, state->adc_states[i].resolution);
         state->adc_states[i].current_value = stm32_lib_adc_data();
     }
 }
@@ -139,16 +163,14 @@ void robot_control_read_sensors(const stm32_system_state_t *state)
  * @brief Update motor speeds based on current ADC values
  * @param state Pointer to system state
  */
-void robot_control_update_motor_speeds(const stm32_system_state_t *state)
+void robot_control_update_motor_speeds(const robot_control_state_t *state)
 {
     if (!state) return;
 
     // Update PWM values based on ADC readings
     for (uint8_t i = 0; i < state->num_pwm_channels; i++) 
     {
-        state->pwm_states[i].pulse = (state->adc_states[i].current_value / 
-                                    ((1 << state->adc_states[i].resolution) - 1)) * 
-                                    state->pwm_states[i].period;
+        state->pwm_states[i].pulse = (state->adc_states[i].current_value / ((1 << state->adc_states[i].resolution) - 1)) * state->pwm_states[i].period;
 
         // Update timer compare values
         stm32_lib_timer_set_compare(state->pwm_states[i].timer,
@@ -160,33 +182,41 @@ void robot_control_update_motor_speeds(const stm32_system_state_t *state)
 /**
  * @brief Handle robot state transitions based on button inputs
  * @param state Pointer to system state
- * @param display_callback Function pointer for LCD display updates
  */
-void robot_control_state_machine(const stm32_system_state_t *state, 
-                               void (*display_callback)(const char*, const char*))
+void robot_control_state_machine(const robot_control_state_t *state)
 {
-    if (!state || !display_callback) return;
+    if (!state) return;
 
     // Check buttons using state configuration
     if (stm32_lib_check_button(GPIOA, state->button_state.brake_pin)) 
     {
         robot_control_handle_brake(state);
-        display_callback("     Brake", "    Activated");
+        lcd_command(CLEAR);
+        lcd_putstring("     Brake");
+        lcd_command(LINE_TWO);
+        lcd_putstring("    Activated");
     } 
     else if (stm32_lib_check_button(GPIOA, state->button_state.drive_pin)) 
     {
         robot_control_handle_drive(state);
+        lcd_command(CLEAR);
+        lcd_putstring("Driving motor...");
     } 
     else if (stm32_lib_check_button(GPIOA, state->button_state.softstart_pin)) 
     {
-        display_callback("    Softstart", "    Activated");
+        lcd_command(CLEAR);
+        lcd_putstring("    Softstart");
+        lcd_command(LINE_TWO);
+        lcd_putstring("    Activated");
         robot_control_handle_softstart(state, state->softstart_state.max_value, state->softstart_state.step_delay);
         robot_control_handle_drive(state);
-        display_callback("Driving motor...", "");
+        lcd_command(CLEAR);
+        lcd_putstring("Driving motor...");
     } 
     else if (stm32_lib_check_button(GPIOA, state->button_state.reverse_pin)) 
     {
-        display_callback("     Reverse", "");
         robot_control_handle_reverse(state);
+        lcd_command(CLEAR);
+        lcd_putstring("     Reverse");
     }
 }

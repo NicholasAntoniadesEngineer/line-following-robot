@@ -5,37 +5,13 @@
  ******************************************************************************/
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include "stm32_lib.h"
 #include "robot_control.h"
 
 /**
- * @brief Initialize all STM32 peripherals and subsystems with state
- */
-static void _init_stm32(const stm32_system_state_t *state) 
-{
-    if (!state) return;
-    
-    // Initialize the system with robot-specific initialization
-    robot_control_stm32_init(state);
-}
-
-/**
- * @brief Display message on LCD
- */
-static void _lcd_display(const char* line1, const char* line2) 
-{
-    lcd_command(CLEAR);
-    lcd_putstring(line1);
-
-    lcd_command(LINE_TWO);
-    lcd_putstring(line2);
-}
-
-/**
  * @brief Set up system state
  */
-static void _set_state(stm32_system_state_t *state)
+static void _init_state(robot_control_state_t *state)
 {
     if (!state) return;
 
@@ -89,6 +65,16 @@ static void _set_state(stm32_system_state_t *state)
         { .pin = 11, .mode = GPIO_MODE_AF, .pull = GPIO_NOPULL }      // PWM output
     };
     state->port_state.num_pins_b = 2;
+
+    // Configure button states
+    state->button_state.brake_pin = BRAKE_PIN;
+    state->button_state.drive_pin = DRIVE_PIN;
+    state->button_state.softstart_pin = SOFTSTART_PIN;
+    state->button_state.reverse_pin = REVERSE_PIN;
+
+    // Configure softstart parameters
+    state->softstart_state.max_value = 100;
+    state->softstart_state.step_delay = 50;
 }
 
 /**
@@ -98,14 +84,11 @@ static void _set_state(stm32_system_state_t *state)
 int main(void) 
 {
     // Create and initialize system state
-    stm32_system_state_t system_state;
-    _set_state(&system_state);
+    robot_control_state_t system_state;
+    _init_state(&system_state);
 
     // Initialize all STM32 peripherals and subsystems
-    _init_stm32(&system_state);
-
-    // Display initial message on LCD
-    _lcd_display("SW0: Brakes", "SW1: Reactivate");
+    robot_control_stm32_init(&system_state);
 
     while (1) 
     {
@@ -116,7 +99,7 @@ int main(void)
         robot_control_update_motor_speeds(&system_state);
 
         // Handle state transitions based on button inputs
-        robot_control_state_machine(&system_state, _lcd_display);
+        robot_control_state_machine(&system_state);
     }
     return 0;
 }

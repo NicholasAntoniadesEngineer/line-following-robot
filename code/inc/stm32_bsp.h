@@ -11,7 +11,10 @@
 #ifndef STM32_BSP_H_
 #define STM32_BSP_H_
 
-#include "stm32f4xx_hal.h"
+#define STM32F051
+#include "stm32f0xx.h"
+#include <stm32f0xx_exti.h>
+#include "stm32f051x8.h"
 #include <stdint.h>
 
 /*******************************************************************************
@@ -20,6 +23,15 @@
 #define BSP_HMI_BUFFER_SIZE         12U
 #define BSP_NUM_ADC_CHANNELS        3U
 #define BSP_UART_TX_COMPLETE_FLAG   255U
+
+// Pin masks
+#define PA8_MASK  0x0100
+#define PA9_MASK  0x0200
+#define PA10_MASK 0x0400
+#define PB12_MASK 0x1000
+#define PB13_MASK 0x2000
+#define PB14_MASK 0x4000
+#define PB15_MASK 0x8000
 
 /*******************************************************************************
  * Type Definitions
