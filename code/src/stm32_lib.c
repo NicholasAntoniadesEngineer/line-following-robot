@@ -54,14 +54,38 @@ void stm32_lib_init_pwm(int frequency)
 }
 
 // Initializing the ADC
-void stm32_lib_init_adc(void)
+void stm32_lib_init_adc(const stm32_adc_state_t *adc_states, uint8_t num_channels)
 {
-	ADC1 -> CR |= ADC_CR_ADCAL;          // ADC calibration
-	RCC -> APB2ENR |= RCC_APB2ENR_ADCEN; // Enabling the ADC clock in the RCC APB  periperal clock enableregister
-	ADC1 -> CFGR1 |= 0x10;               // Setting the ADC resolution in the ADC configuration register 1
-	ADC1->CHSELR = 0b100000;	         // Selecting the chanel for pot-0.
-	ADC1 -> CR |= ADC_CR_ADEN;           // Enabling the ADC
-	while((ADC1 -> ISR & 0x01) ==0 );    // Waiting for the ADRDY pin to let us know the ADC is ready.
+    if (!adc_states || num_channels == 0) return;
+
+    // Enable ADC clock
+    RCC->APB2ENR |= RCC_APB2ENR_ADCEN;
+
+    // Start calibration
+    ADC1->CR |= ADC_CR_ADCAL;
+    while((ADC1->CR & ADC_CR_ADCAL) != 0); // Wait for calibration to complete
+
+    // Configure ADC
+    uint32_t chselr = 0;
+    uint8_t max_resolution = 0;
+
+    // Collect configuration from all channels
+    for (uint8_t i = 0; i < num_channels; i++) {
+        chselr |= (1 << adc_states[i].channel);
+        if (adc_states[i].resolution > max_resolution) {
+            max_resolution = adc_states[i].resolution;
+        }
+    }
+
+    // Set resolution (use highest requested)
+    ADC1->CFGR1 = ((max_resolution - 6) / 2) << 3; // Convert 8,10,12 bit to 0,1,2
+
+    // Set channel selection register
+    ADC1->CHSELR = chselr;
+
+    // Enable ADC
+    ADC1->CR |= ADC_CR_ADEN;
+    while((ADC1->ISR & ADC_ISR_ADRDY) == 0); // Wait for ADC ready
 }
 
 // Initializing the ADC to a specific pin
@@ -311,4 +335,23 @@ void stm32_lib_uart_init(stm32_uart_state_t *uart_state, const stm32_uart_state_
 
     // Initialize UART hardware
     stm32_bsp_uart_init(uart_state->huart, (uint32_t)uart_state->huart->Instance, uart_state->huart->Init.BaudRate);
+}
+
+// Add system initialization function
+void stm32_lib_init(const stm32_system_config_t *config)
+{
+    if (!config) return;
+
+    // Initialize ports
+    stm32_lib_port_init(&config->port_state);
+
+    // Initialize ADC
+    stm32_lib_init_adc(config->adc_states, config->num_adc_channels);
+
+    // Initialize PWM for each channel
+    for (uint8_t i = 0; i < config->num_pwm_channels; i++) {
+        stm32_lib_init_pwm_tim(config->pwm_states[i].timer, 
+                              config->pwm_states[i].channel, 
+                              config->pwm_states[i].frequency);
+    }
 }
