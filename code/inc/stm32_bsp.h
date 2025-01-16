@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
   * @file           : stm32_bsp.h
-  * @brief          : Combined Board Support Package header file
-  * @details        : Encapsulates HAL and BSP functions for all prototypes
+  * @brief          : Board Support Package header file
+  * @details        : Encapsulates hardware-specific functions for STM32
   * @date           : 2024
   * @author         : Nicholas Antoniades
   ******************************************************************************
@@ -14,12 +14,16 @@
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
 
-/* Configuration constants */
+/*******************************************************************************
+ * Configuration Constants
+ ******************************************************************************/
 #define BSP_HMI_BUFFER_SIZE         12U
 #define BSP_NUM_ADC_CHANNELS        3U
 #define BSP_UART_TX_COMPLETE_FLAG   255U
 
-/* BSP state type definition */
+/*******************************************************************************
+ * Type Definitions
+ ******************************************************************************/
 typedef struct {
     uint8_t hmiTxBuffer[BSP_HMI_BUFFER_SIZE];
     uint8_t hmiRxBuffer[BSP_HMI_BUFFER_SIZE];
@@ -30,45 +34,123 @@ typedef struct {
     float pressure_threshold;
 } bsp_state_t;
 
-/* Function Prototypes */
+/*******************************************************************************
+ * System Functions
+ ******************************************************************************/
+/* Initialization */
+void stm32_bsp_hal_init(void);
+void stm32_bsp_init_state(bsp_state_t* state);
 
-/* Initialization Functions */
-void BSP_HAL_Init(void);
-void BSP_Init_State(bsp_state_t* state);
+/* System Timing */
+uint32_t stm32_bsp_gettick(void);
+void stm32_bsp_delay(uint32_t delay);
 
-/* GPIO Functions */
-void BSP_GPIO_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
-GPIO_PinState BSP_GPIO_ReadPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+/* Flash Configuration */
+void stm32_bsp_flash_config_latency(uint32_t latency);
 
-/* Timer Functions */
-void BSP_TIM_Base_Start(TIM_HandleTypeDef* htim);
-void BSP_TIM_Base_Stop(TIM_HandleTypeDef* htim);
-void BSP_TIM_Base_Init(TIM_HandleTypeDef* htim);
-void BSP_TIM_PWM_Init(TIM_HandleTypeDef* htim, uint32_t channel, uint32_t frequency);
+/*******************************************************************************
+ * Clock Management Functions
+ ******************************************************************************/
+void stm32_bsp_clock_enable_hse(void);
+void stm32_bsp_clock_disable_hse(void);
+void stm32_bsp_clock_config_pll(uint32_t source, uint32_t multiplier);
+void stm32_bsp_clock_config_sysclk(uint32_t source);
+void stm32_bsp_clock_wait_hse_ready(void);
+void stm32_bsp_clock_wait_pll_ready(void);
+void stm32_bsp_clock_wait_sysclk_switched(uint32_t source);
 
-/* UART Functions */
-void BSP_UART_Transmit(UART_HandleTypeDef *huart, uint8_t *data, uint16_t size);
-void BSP_UART_Receive(UART_HandleTypeDef *huart, uint8_t *data, uint16_t size);
-void BSP_UART_Transmit_DMA(UART_HandleTypeDef *huart, uint8_t *data, uint16_t size);
-void BSP_UART_Receive_DMA(UART_HandleTypeDef *huart, uint8_t *data, uint16_t size);
-void BSP_UART_Init(uart_state_t* uart_state, const uart_config_t* config);
+/*******************************************************************************
+ * GPIO Functions
+ ******************************************************************************/
+/* Basic GPIO Operations */
+void stm32_bsp_gpio_init(void);
+void stm32_bsp_gpio_enable_clock(GPIO_TypeDef* gpio);
+void stm32_bsp_gpio_config_pin(GPIO_TypeDef* gpio, uint8_t pin, uint32_t mode, uint32_t pull);
+void stm32_bsp_gpio_writepin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState);
+GPIO_PinState stm32_bsp_gpio_readpin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+uint32_t stm32_bsp_gpio_read_port(GPIO_TypeDef* gpio);
+uint8_t stm32_bsp_gpio_read_pin(GPIO_TypeDef* gpio, uint16_t pin);
+
+/* GPIO Alternate Function */
+void stm32_bsp_gpio_config_alternate_function(GPIO_TypeDef* gpio, uint8_t pin, uint8_t af_value);
+void stm32_bsp_gpio_set_alternate_function(GPIO_TypeDef* gpio, uint8_t pin);
+
+/*******************************************************************************
+ * Timer Functions
+ ******************************************************************************/
+/* Basic Timer Operations */
+void stm32_bsp_timer_enable_clock(TIM_TypeDef* timer);
+void stm32_bsp_timer_disable_clock(TIM_TypeDef* timer);
+void stm32_bsp_timer_enable(TIM_TypeDef* timer);
+void stm32_bsp_timer_init(TIM_TypeDef* timer, uint32_t prescaler, uint32_t period);
+void stm32_bsp_timer_config_basic(TIM_TypeDef* timer, uint32_t prescaler, uint32_t period);
+
+/* Timer Advanced Features */
+void stm32_bsp_timer_enable_interrupt(TIM_TypeDef* timer);
+void stm32_bsp_timer_clear_flag(TIM_TypeDef* timer);
+void stm32_bsp_timer_set_autoreload(TIM_TypeDef* timer, uint32_t value);
+void stm32_bsp_timer_enable_autoreload_preload(TIM_TypeDef* timer);
+
+/* PWM Functions */
+void stm32_bsp_timer_config_pwm(TIM_TypeDef* timer, uint32_t channel, uint32_t arr, uint32_t ccr);
+void stm32_bsp_timer_enable_channel(TIM_TypeDef* timer, uint32_t channel);
+
+/*******************************************************************************
+ * ADC Functions
+ ******************************************************************************/
+/* Basic ADC Operations */
+void stm32_bsp_adc_enable_clock(ADC_TypeDef* adc);
+void stm32_bsp_adc_enable(ADC_TypeDef* adc);
+void stm32_bsp_adc_config(ADC_TypeDef* adc, uint32_t channel, uint32_t resolution);
+void stm32_bsp_adc_calibrate(ADC_TypeDef* adc);
+void stm32_bsp_adc_wait_ready(ADC_TypeDef* adc);
+
+/* ADC Conversion */
+void stm32_bsp_adc_start_conversion(ADC_TypeDef* adc);
+void stm32_bsp_adc_wait_conversion(ADC_TypeDef* adc);
+uint32_t stm32_bsp_adc_get_data(ADC_TypeDef* adc);
+
+/* ADC DMA Operations */
+void stm32_bsp_adc_start_dma(ADC_HandleTypeDef* hadc, uint32_t* buffer, uint32_t length);
+void stm32_bsp_adc_stop_dma(ADC_HandleTypeDef* hadc);
+
+/* ADC Analog Watchdog */
+void stm32_bsp_adc_config_awd(ADC_TypeDef* adc, uint32_t channel, uint32_t high_threshold, uint32_t low_threshold);
+void stm32_bsp_adc_enable_awd_interrupt(ADC_TypeDef* adc);
+uint8_t stm32_bsp_adc_check_awd(ADC_TypeDef* adc);
+void stm32_bsp_adc_clear_awd_flag(ADC_TypeDef* adc);
+
+/*******************************************************************************
+ * Communication Interface Functions
+ ******************************************************************************/
+/* USART Functions */
+void stm32_bsp_usart_config(USART_TypeDef* usart, uint32_t baud_rate);
+void stm32_bsp_usart_enable_clock(USART_TypeDef* usart);
+void stm32_bsp_usart_transmit_char(USART_TypeDef* usart, uint8_t data);
+uint8_t stm32_bsp_usart_receive_char(USART_TypeDef* usart);
+void stm32_bsp_usart_wait_tx_complete(USART_TypeDef* usart);
 
 /* I2C Functions */
-void BSP_I2C_Read(I2C_HandleTypeDef *hi2c, uint16_t dev_addr, uint16_t reg_addr, uint8_t *data, uint16_t size);
-void BSP_I2C_Write(I2C_HandleTypeDef *hi2c, uint16_t dev_addr, uint16_t reg_addr, uint8_t *data, uint16_t size);
+void stm32_bsp_i2c_read(I2C_HandleTypeDef *hi2c, uint16_t dev_addr, uint16_t reg_addr, uint8_t *data, uint16_t size);
+void stm32_bsp_i2c_write(I2C_HandleTypeDef *hi2c, uint16_t dev_addr, uint16_t reg_addr, uint8_t *data, uint16_t size);
 
-/* ADC Functions */
-void BSP_ADC_Start(ADC_HandleTypeDef* hadc);
-void BSP_ADC_Stop(ADC_HandleTypeDef* hadc);
-void BSP_ADC_Start_DMA(ADC_HandleTypeDef* hadc, uint32_t* buffer, uint32_t length);
-void BSP_ADC_Stop_DMA(ADC_HandleTypeDef* hadc);
-uint32_t BSP_ADC_ReadValue(ADC_HandleTypeDef* hadc);
+/*******************************************************************************
+ * Interrupt Functions
+ ******************************************************************************/
+/* NVIC Functions */
+void stm32_bsp_nvic_enable_irq(IRQn_Type irq);
+void stm32_bsp_nvic_disable_irq(IRQn_Type irq);
+void stm32_bsp_nvic_set_priority(IRQn_Type irq, uint32_t priority);
 
-/* System Functions */
-uint32_t BSP_GetTick(void);
-void BSP_Delay(uint32_t delay);
+/* EXTI Functions */
+void stm32_bsp_exti_config(uint32_t exti_line, GPIO_TypeDef* gpio, uint32_t trigger);
+void stm32_bsp_exti_enable_clock(void);
+void stm32_bsp_exti_enable_interrupt(uint32_t exti_line);
+void stm32_bsp_exti_clear_flag(uint32_t exti_line);
 
-/* Handle Declarations */
+/*******************************************************************************
+ * Peripheral Handles
+ ******************************************************************************/
 extern ADC_HandleTypeDef hadc1;
 extern I2C_HandleTypeDef hi2c1;
 extern I2C_HandleTypeDef hi2c3;

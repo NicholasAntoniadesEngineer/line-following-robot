@@ -11,6 +11,8 @@
 #include <stdint.h>
 #define STM32F051
 #include "stm32f0xx.h"
+#include <stm32f0xx_exti.h>
+#include "stm32f051x8.h"
 
 // Pin masks
 #define PA8_MASK  0x0100
