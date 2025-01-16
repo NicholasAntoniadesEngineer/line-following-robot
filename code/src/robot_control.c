@@ -29,12 +29,23 @@ void robot_control_stm32_init(const robot_control_state_t *state)
                               state->pwm_states[i].frequency);
     }
 
-    // Initialize LCD and display initial message
+    // Initialize LCD
     stm32_lib_init_lcd();
-    lcd_command(CLEAR);
-    lcd_putstring("SW0: Brakes");
-    lcd_command(LINE_TWO);
-    lcd_putstring("SW1: Reactivate");
+    
+    // Cool startup sequence
+    robot_control_lcd_print("  Line Following", "     Robot");
+    delay(1000); 
+    
+    robot_control_lcd_print(" Initializing", ".");
+    delay(500);
+    robot_control_lcd_print(".", ".");
+    delay(500);
+    
+    robot_control_lcd_print("System Ready!", "");
+    delay(1000);
+    
+    // Show instructions
+    robot_control_lcd_print("SW0: Brakes", "SW1: Reactivate");
 
     // Initialize interrupts
     stm32_lib_init_nvic();
@@ -66,10 +77,7 @@ void robot_control_handle_brake(const robot_control_state_t *state)
     stm32_lib_timer_disable(state->timer_state.motor_timer);
 
     // Update LCD display
-    lcd_command(CLEAR);
-    lcd_putstring("     Brake");
-    lcd_command(LINE_TWO);
-    lcd_putstring("    Activated");
+    robot_control_lcd_print("     Brake", "    Activated");
 }
 
 /**
@@ -85,8 +93,7 @@ void robot_control_handle_drive(const robot_control_state_t *state)
     stm32_lib_timer_enable(state->timer_state.motor_timer);
 
     // Update LCD display
-    lcd_command(CLEAR);
-    lcd_putstring("Driving motor...");
+    robot_control_lcd_print("Driving motor...", "");
 }
 
 /**
@@ -100,10 +107,7 @@ void robot_control_handle_softstart(const robot_control_state_t *state, uint32_t
     if (!state) return;
 
     // Update LCD display
-    lcd_command(CLEAR);
-    lcd_putstring("    Softstart");
-    lcd_command(LINE_TWO);
-    lcd_putstring("    Activated");
+    robot_control_lcd_print("    Softstart", "    Activated");
 
     // Set control pattern from state
     stm32_lib_gpio_set_port(state->port_state.control_port, state->port_state.softstart_pattern);
@@ -139,8 +143,7 @@ void robot_control_handle_reverse(const robot_control_state_t *state)
     stm32_lib_timer_enable(state->timer_state.motor_timer);
 
     // Update LCD display
-    lcd_command(CLEAR);
-    lcd_putstring("     Reverse");
+    robot_control_lcd_print("     Reverse", "");
 }
 
 /**
@@ -191,32 +194,36 @@ void robot_control_state_machine(const robot_control_state_t *state)
     if (stm32_lib_check_button(GPIOA, state->button_state.brake_pin)) 
     {
         robot_control_handle_brake(state);
-        lcd_command(CLEAR);
-        lcd_putstring("     Brake");
-        lcd_command(LINE_TWO);
-        lcd_putstring("    Activated");
+        robot_control_lcd_print("     Brake", "    Activated");
     } 
     else if (stm32_lib_check_button(GPIOA, state->button_state.drive_pin)) 
     {
         robot_control_handle_drive(state);
-        lcd_command(CLEAR);
-        lcd_putstring("Driving motor...");
+        robot_control_lcd_print("Driving motor...", "");
     } 
     else if (stm32_lib_check_button(GPIOA, state->button_state.softstart_pin)) 
     {
-        lcd_command(CLEAR);
-        lcd_putstring("    Softstart");
-        lcd_command(LINE_TWO);
-        lcd_putstring("    Activated");
+        robot_control_lcd_print("    Softstart", "    Activated");
         robot_control_handle_softstart(state, state->softstart_state.max_value, state->softstart_state.step_delay);
         robot_control_handle_drive(state);
-        lcd_command(CLEAR);
-        lcd_putstring("Driving motor...");
+        robot_control_lcd_print("Driving motor...", "");
     } 
     else if (stm32_lib_check_button(GPIOA, state->button_state.reverse_pin)) 
     {
         robot_control_handle_reverse(state);
-        lcd_command(CLEAR);
-        lcd_putstring("     Reverse");
+        robot_control_lcd_print("     Reverse", "");
+    }
+}
+
+void robot_control_lcd_print(const char* line1, const char* line2)
+{
+    if (!line1) return;
+    
+    lcd_command(CLEAR);
+    lcd_putstring(line1);
+    
+    if (line2) {
+        lcd_command(LINE_TWO);
+        lcd_putstring(line2);
     }
 }
