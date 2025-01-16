@@ -73,8 +73,10 @@ void stm32_lib_init_adc(const stm32_adc_state_t *adc_states, uint8_t num_channel
 
 	// Configure ADC channels
 	uint8_t max_resolution = 0;
-	for (uint8_t i = 0; i < num_channels; i++) {
-		if (adc_states[i].resolution > max_resolution) {
+	for (uint8_t i = 0; i < num_channels; i++) 
+	{
+		if (adc_states[i].resolution > max_resolution) 
+		{
 			max_resolution = adc_states[i].resolution;
 		}
 		stm32_bsp_adc_config(ADC1, adc_states[i].channel, max_resolution);
@@ -150,7 +152,8 @@ void stm32_lib_init_adc(const stm32_adc_state_t *adc_states, uint8_t num_channel
     // Collect configuration from all channels
     for (uint8_t i = 0; i < num_channels; i++) {
         chselr |= (1 << adc_states[i].channel);
-        if (adc_states[i].resolution > max_resolution) {
+        if (adc_states[i].resolution > max_resolution) 
+		{
             max_resolution = adc_states[i].resolution;
         }
     }
@@ -332,7 +335,8 @@ void stm32_lib_pwm(void)
     stm32_bsp_timer_enable(TIM2);
 }
 
-void stm32_lib_uart_init(stm32_uart_state_t *uart_state, const stm32_uart_state_t *config) {
+void stm32_lib_uart_init(stm32_uart_state_t *uart_state, const stm32_uart_state_t *config) 
+{
     if (!uart_state || !config) return;
 
     // Copy configuration to state
@@ -429,7 +433,8 @@ int stm32_lib_check_button(GPIO_TypeDef* gpio, int button)
 {
     if (!gpio) return 0;
     
-    if (stm32_bsp_gpio_read_pin(gpio, button) == 0) {
+    if (stm32_bsp_gpio_read_pin(gpio, button) == 0) 
+	{
         stm32_lib_debounce();
         return 1;
     }
