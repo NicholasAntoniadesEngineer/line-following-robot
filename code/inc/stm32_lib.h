@@ -117,8 +117,7 @@ int stm32_lib_adc_data(void);
 // Button functions
 uint8_t stm32_lib_button_read(const stm32_button_state_t *button);
 void stm32_lib_button_debounce(uint32_t delay_ms);
-int stm32_lib_check_button_gpioa(int button);
-int stm32_lib_check_button_gpiob(int button);
+int stm32_lib_check_button(GPIO_TypeDef* gpio, int button);
 
 // UART functions
 void stm32_lib_uart_init(stm32_uart_state_t *uart_state, const stm32_uart_state_t *config);

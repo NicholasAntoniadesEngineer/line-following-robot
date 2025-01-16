@@ -52,11 +52,8 @@ void robot_control_handle_brake(const stm32_system_state_t *state)
     }
 
     // Set brake pin using state configuration
-    GPIO_TypeDef* brake_port = state->port_state.brake_port;
-    uint16_t brake_pin = state->port_state.brake_pin;
-    
-    stm32_lib_gpio_set_port(brake_port, 0);
-    stm32_lib_gpio_set_pin(brake_port, brake_pin, 1);
+    stm32_lib_gpio_set_port(state->port_state.brake_port;, 0);
+    stm32_lib_gpio_set_pin( state->port_state.brake_port;, state->port_state.brake_pin, 1);
 
     // Configure timers using state configuration
     stm32_lib_timer_enable(state->timer_state.control_timer);
@@ -171,23 +168,23 @@ void robot_control_state_machine(const stm32_system_state_t *state,
     if (!state || !display_callback) return;
 
     // Check buttons using state configuration
-    if (stm32_lib_check_button_gpioa(state->button_state.brake_pin)) 
+    if (stm32_lib_check_button(GPIOA, state->button_state.brake_pin)) 
     {
         robot_control_handle_brake(state);
         display_callback("     Brake", "    Activated");
     } 
-    else if (stm32_lib_check_button_gpioa(state->button_state.drive_pin)) 
+    else if (stm32_lib_check_button(GPIOA, state->button_state.drive_pin)) 
     {
         robot_control_handle_drive(state);
     } 
-    else if (stm32_lib_check_button_gpioa(state->button_state.softstart_pin)) 
+    else if (stm32_lib_check_button(GPIOA, state->button_state.softstart_pin)) 
     {
         display_callback("    Softstart", "    Activated");
         robot_control_handle_softstart(state, state->softstart_state.max_value, state->softstart_state.step_delay);
         robot_control_handle_drive(state);
         display_callback("Driving motor...", "");
     } 
-    else if (stm32_lib_check_button_gpioa(state->button_state.reverse_pin)) 
+    else if (stm32_lib_check_button(GPIOA, state->button_state.reverse_pin)) 
     {
         display_callback("     Reverse", "");
         robot_control_handle_reverse(state);

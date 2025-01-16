@@ -212,24 +212,6 @@ void stm32_lib_delay(int time) {
 	while (time > 0) {time--;}
 }
 
-// Check for button press GPIOA
-int stm32_lib_check_button_gpioa(int button) {
-	if (stm32_bsp_gpio_read_pin(GPIOA, button) == 0) {
-		stm32_lib_debounce();
-		return 1;
-	}
-	return 0;
-}
-// Check for button press GPIOB
-int stm32_lib_check_button_gpiob(int button) 
-{
-	if (stm32_bsp_gpio_read_pin(GPIOB, button) == 0) {
-		stm32_lib_debounce();
-		return 1;
-	}
-	return 0;
-}
-
 // Check for button debouncee
 void stm32_lib_debounce(void) 
 {
@@ -441,4 +423,15 @@ void stm32_lib_timer_init(TIM_TypeDef* timer, uint32_t arr, uint32_t psc)
 {
     if (!timer) return;
     stm32_bsp_timer_init(timer, psc, arr);
+}
+
+int stm32_lib_check_button(GPIO_TypeDef* gpio, int button)
+{
+    if (!gpio) return 0;
+    
+    if (stm32_bsp_gpio_read_pin(gpio, button) == 0) {
+        stm32_lib_debounce();
+        return 1;
+    }
+    return 0;
 }
